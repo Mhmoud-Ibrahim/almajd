@@ -1,179 +1,119 @@
-import { Request, Response } from 'express';
-import User from '../../MongoDB/Schemas/user.model';
+import { Request, Response, NextFunction } from 'express';
+import User from '../../MongoDB/Schemas/user.model.js';
 import jwt from 'jsonwebtoken';
-import { v2 as cloudinary } from 'cloudinary';
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-// 1. إعداد مرسل البريد (Nodemailer Transporter)
-dotenv.config();
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS, 
-  },
-});
-
-// تفعيل قراءة ملف الـ .env
-
-
-// 2. دالة مساعدة لإرسال الإيميل
-const sendOtpEmail = async (email: string, otp: string) => {
-  const mailOptions = {
-    from: `"Al Majd Server" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: 'كود التحقق الخاص بك - المجد',
-    html: `
-      <div style="font-family: sans-serif; text-align: center; border: 1px solid #eee; padding: 20px;">
-        <h2 style="color: #333;">مرحباً بك في نظام المجد</h2>
-        <p>استخدم الكود التالي لإتمام عملية تسجيل الدخول:</p>
-        <h1 style="color: #4CAF50; font-size: 40px; letter-spacing: 5px;">${otp}</h1>
-        <p style="color: #777;">صلاحية هذا الكود 10 دقائق فقط.</p>
-      </div>
-    `,
-  };
-  return transporter.sendMail(mailOptions);
-};
+import { AppError } from '../../utils/appError.js';
+import { catchError } from '../../middleware/catchError.js';
+import { sendEmail } from '../../utils/sendEmail.js';
 
 /**
  * @desc    إنشاء حساب جديد مع رفع صورة وإرسال OTP للإيميل
  */
-
-export const signup = async (req: any, res: any) => {
-  try {
+export const signup = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { fullName, phoneNumber, email, password } = req.body;
 
-    if (!fullName || !phoneNumber || !email) {
-      return res.status(400).json({ success: false, message: "الاسم ورقم الهاتف والإيميل مطلوبون" });
-    }
-
+    // التحقق من وجود المستخدم
     const userExists = await User.findOne({ $or: [{ phoneNumber }, { email }] });
-    if (userExists) {
-      return res.status(400).json({ success: false, message: "الرقم أو البريد الإلكتروني مسجل بالفعل" });
-    }
+    if (userExists) return next(new AppError("الرقم أو البريد الإلكتروني مسجل بالفعل", 400));
 
-    // رفع الصورة لـ Cloudinary
+    // بيانات الصورة (تأتي جاهزة من Multer-Cloudinary Middleware)
     let profilePicData = { public_id: "", url: "" };
     if (req.file) {
-      const uploadRes = await cloudinary.uploader.upload(req.file.path, {
-        folder: "users_avatars",
-      });
-      profilePicData = {
-        public_id: uploadRes.public_id,
-        url: uploadRes.secure_url,
-      };
+        profilePicData = {
+            public_id: (req.file as any).filename, // في Cloudinary storage تسمى filename
+            url: (req.file as any).path,
+        };
     }
 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const newUser = new User({
-      fullName,
-      phoneNumber,
-      email,
-      password,
-      profilePic: profilePicData,
+        fullName,
+        phoneNumber,
+        email,
+        password,
+        profilePic: profilePicData,
+        otp,
+        otpExpires: new Date(Date.now() + 10 * 60000)
     });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    newUser.set('otp', otp);
-    newUser.set('otpExpires', new Date(Date.now() + 10 * 60000));
-    
     await newUser.save();
 
-    // إرسال الكود للإيميل
-    await sendOtpEmail(email, otp);
+    // إرسال الكود باستخدام الدالة الجديدة
+    await sendEmail({
+        email: newUser.email,
+        subject: 'كود التحقق الخاص بك - almajd',
+        message: `كود التحقق الخاص بك هو: ${otp}. صالح لمدة 10 دقائق.`
+    });
 
-    console.log(`✅ Signup OTP sent to ${email}: ${otp}`);
-    return res.status(201).json({ success: true, message: "تم إنشاء الحساب، تفقد بريدك الإلكتروني لتفعيل الكود" });
-
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-};
+    res.status(201).json({ 
+        success: true, 
+        message: "تم إنشاء الحساب، تفقد بريدك الإلكتروني لتفعيل الكود" 
+    });
+});
 
 /**
  * @desc    تسجيل الدخول وإرسال OTP للإيميل
  */
-export const signin = async (req: Request, res: Response) => {
-  try {
+export const signin = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { phoneNumber } = req.body;
 
-    if (!phoneNumber) {
-      return res.status(400).json({ success: false, message: "يرجى إدخال رقم الهاتف" });
-    }
+    if (!phoneNumber) return next(new AppError("يرجى إدخال رقم الهاتف", 400));
 
     const user = await User.findOne({ phoneNumber });
-    if (!user || !user.email) {
-      return res.status(404).json({ success: false, message: "هذا الرقم غير مسجل أو لا يملك بريداً إلكترونياً" });
-    }
+    if (!user) return next(new AppError("هذا الرقم غير مسجل لدينا", 404));
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.set('otp', otp);
-    user.set('otpExpires', new Date(Date.now() + 10 * 60000));
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60000);
     await user.save();
 
-    // إرسال الكود لإيميل المستخدم المسجل
-    await sendOtpEmail(user.email, otp);
-
-    console.log(`✅ Login OTP sent to ${user.email}: ${otp}`);
+    await sendEmail({
+        email: user.email,
+        subject: 'كود تسجيل الدخول - Noor Store',
+        message: `كود الدخول الخاص بك هو: ${otp}`
+    });
 
     res.status(200).json({ success: true, message: "تم إرسال كود التحقق إلى بريدك الإلكتروني" });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+});
 
 /**
  * @desc    التحقق من الكود وإعطاء التوكن والكوكي
  */
-export const verifyOTP = async (req: Request, res: Response) => {
-  try {
+export const verifyOTP = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { phoneNumber, otp } = req.body;
 
-    if (!phoneNumber || !otp) {
-      return res.status(400).json({ success: false, message: "يرجى إرسال رقم الهاتف والكود" });
-    }
-
     const user = await User.findOne({
-      phoneNumber,
-      otp,
-      otpExpires: { $gt: new Date() }
+        phoneNumber,
+        otp,
+        otpExpires: { $gt: new Date() }
     });
 
-    if (!user) {
-      return res.status(400).json({ success: false, message: "الكود غير صحيح أو انتهت صلاحيته" });
-    }
+    if (!user) return next(new AppError("الكود غير صحيح أو انتهت صلاحيته", 400));
 
     user.isVerified = true;
-    user.set('otp', undefined);
-    user.set('otpExpires', undefined);
+    user.otp = undefined;
+    user.otpExpires = undefined;
     await user.save();
 
+    // التوكن (استخدام المفتاح من env)
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || 'secret_key',
-      { expiresIn: '30d' }
+        { userId: user._id, role: (user as any).role || 'user' },
+        process.env.JWT_KEY || 'secret_key',
+        { expiresIn: '30d' }
     );
 
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000
+    // إرسال الكوكي (اسمها noorToken كما في الميدل وير)
+    res.cookie('noorToken', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none', // لضمان عملها مع الـ Frontend المستقل
+        maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     res.status(200).json({
-      success: true,
-      message: "تم التحقق بنجاح ✅",
-      token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-        profilePic: user.profilePic?.url,
-        isVerified: user.isVerified
-      }
+        success: true,
+        message: "تم التحقق بنجاح ✅",
+        token,
+        user
     });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+});
