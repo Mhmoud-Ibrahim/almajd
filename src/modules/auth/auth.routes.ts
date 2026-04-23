@@ -1,7 +1,7 @@
 import express from 'express';
 import { upload } from '../../middleware/multer'; // تأكد من المسار والامتداد
 import { authenticate } from '../../middleware/authintecate';
-import { signin, signup, verifyOTP } from './auth.controler.js';
+import { signin, signup, verifyOTP } from './auth.controler';
 
 const  authRouter= express.Router();
 authRouter.post('/signup', upload.single('profilePic'), signup);

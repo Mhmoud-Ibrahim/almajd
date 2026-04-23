@@ -1,25 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
-import User from '../../MongoDB/Schemas/user.model.js';
+import User from '../../MongoDB/Schemas/user.model';
 import jwt from 'jsonwebtoken';
-import { AppError } from '../../utils/appError.js';
-import { catchError } from '../../middleware/catchError.js';
-import { sendEmail } from '../../utils/sendEmail.js';
+import { AppError } from '../../utils/appError';
+import { sendEmail } from '../../utils/sendEmail';
+import { catchError } from '../../middleware/catchError';
 
-/**
- * @desc    إنشاء حساب جديد مع رفع صورة وإرسال OTP للإيميل
- */
+
 export const signup = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { fullName, phoneNumber, email, password } = req.body;
 
-    // التحقق من وجود المستخدم
     const userExists = await User.findOne({ $or: [{ phoneNumber }, { email }] });
     if (userExists) return next(new AppError("الرقم أو البريد الإلكتروني مسجل بالفعل", 400));
 
-    // بيانات الصورة (تأتي جاهزة من Multer-Cloudinary Middleware)
     let profilePicData = { public_id: "", url: "" };
     if (req.file) {
         profilePicData = {
-            public_id: (req.file as any).filename, // في Cloudinary storage تسمى filename
+            public_id: (req.file as any).filename, 
             url: (req.file as any).path,
         };
     }
@@ -38,7 +34,6 @@ export const signup = catchError(async (req: Request, res: Response, next: NextF
 
     await newUser.save();
 
-    // إرسال الكود باستخدام الدالة الجديدة
     await sendEmail({
         email: newUser.email,
         subject: 'كود التحقق الخاص بك - almajd',
@@ -51,9 +46,7 @@ export const signup = catchError(async (req: Request, res: Response, next: NextF
     });
 });
 
-/**
- * @desc    تسجيل الدخول وإرسال OTP للإيميل
- */
+
 export const signin = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { phoneNumber } = req.body;
 
@@ -76,9 +69,8 @@ export const signin = catchError(async (req: Request, res: Response, next: NextF
     res.status(200).json({ success: true, message: "تم إرسال كود التحقق إلى بريدك الإلكتروني" });
 });
 
-/**
- * @desc    التحقق من الكود وإعطاء التوكن والكوكي
- */
+
+
 export const verifyOTP = catchError(async (req: Request, res: Response, next: NextFunction) => {
     const { phoneNumber, otp } = req.body;
 
@@ -95,18 +87,18 @@ export const verifyOTP = catchError(async (req: Request, res: Response, next: Ne
     user.otpExpires = undefined;
     await user.save();
 
-    // التوكن (استخدام المفتاح من env)
+
     const token = jwt.sign(
         { userId: user._id, role: (user as any).role || 'user' },
         process.env.JWT_KEY || 'secret_key',
         { expiresIn: '30d' }
     );
 
-    // إرسال الكوكي (اسمها noorToken كما في الميدل وير)
+
     res.cookie('noorToken', token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'none', // لضمان عملها مع الـ Frontend المستقل
+        sameSite: 'none', 
         maxAge: 30 * 24 * 60 * 60 * 1000
     });
 

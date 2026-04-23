@@ -1,6 +1,6 @@
 
 import {   type NextFunction, type Request, type RequestHandler, type Response } from 'express';
-import { AppError } from '../utils/appError.js';
+import { AppError } from '../utils/appError';
 
 type AsyncFunction = (req: Request, res: Response, next: NextFunction) => Promise<any>;
 

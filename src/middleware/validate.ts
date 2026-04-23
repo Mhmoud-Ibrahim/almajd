@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { AppError } from "../utils/appError.js";
+import { AppError } from "../utils/appError";
 
 
 
@@ -15,32 +15,6 @@ export  const validate = (schema:any) => {
   }
 };
 
-
-// export const validation = (Schema:any)=>{
-//     return (req:Request,res:Response,next:NextFunction) =>{
-//         let filter = {}
-//         if(req.file){
-//             filter = {image:req.file,...req.body,...req.params,...req.query}
-//         }else if(req.files){
-//             filter = {...req.files,...req.body,...req.params,...req.query}
-//         }
-        
-//         else{
-//             filter = { ...req.body,...req.params,...req.query}
-//         }
-//         const {error} = Schema.validate(filter,{abortEarly :false});
-//     if(!error){
-//         next();
-//     }else{
-//         let errorList:string[] = []
-//         error.details.forEach(( val:any) =>{
-//             errorList.push(val.message)
-//         })
-//         next(new AppError((errorList)as any,400))
-//     }
-//     }
-// }
-// في ملف validate.ts
 export const validation = (Schema: any) => {
     return (req: Request, res: Response, next: NextFunction) => {
         let filter = { ...req.body, ...req.params, ...req.query };

@@ -1,8 +1,7 @@
 import { Query } from 'mongoose';
 
 export default class ApiFeatures {
-    // mongooseQuery: الاستعلام اللي بنبنيه
-    // queryString: الـ req.query اللي جاي من الراوت
+
     constructor(public mongooseQuery: Query<any[], any>, public queryString: any) {}
 
     pagination() {
