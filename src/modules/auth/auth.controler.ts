@@ -1,6 +1,6 @@
 
 import jwt from 'jsonwebtoken'
-import { User, type IUser } from '../../../src/models/user.model'
+
 import bcrypt from 'bcrypt'
 import { catchError } from '../../middleware/catchError.js';
 import { AppError } from '../../utils/appError.js';
@@ -10,6 +10,7 @@ import { Strategy as GoogleStrategy, type Profile, type VerifyCallback } from 'p
 import dotenv from 'dotenv';
 import crypto from 'crypto'; 
 import { sendEmail } from '../../utils/sendEmail.js';
+import User from '../../MongoDB/Schemas/user.model';
 dotenv.config();
 // --- 1. تعريف إستراتيجية جوجل (Google Strategy) ---
 passport.use(new GoogleStrategy({
