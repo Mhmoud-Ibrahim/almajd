@@ -1,9 +1,9 @@
 
-import { getMe, logout, signin, signup } from "./auth.controller.js";
+import { getMe, logout, signin, signup } from "./auth.controler";
 import { authenticate } from "../../middleware/authintecate.js";
 import { Router } from 'express';
 import passport from 'passport';
-import * as authController from './auth.controller.js';
+import * as authController from './auth.controler';
 const authRouter = Router();
 
 authRouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -16,8 +16,8 @@ authRouter.post('/signin', signin);
 authRouter.post('/logout', logout);
 authRouter.get('/me', authenticate, getMe);
 // --- Forgot & Reset Password Routes ---
-authRouter.post('/forgotPassword', authController.forgotPassword); // لإرسال الإيميل
-authRouter.patch('/resetPassword', authController.resetPassword); // لتغيير الباسورد الفعلي
+// authRouter.post('/forgotPassword', authController.forgotPassword); // لإرسال الإيميل
+// authRouter.patch('/resetPassword', authController.resetPassword); // لتغيير الباسورد الفعلي
 
 
 export default authRouter;

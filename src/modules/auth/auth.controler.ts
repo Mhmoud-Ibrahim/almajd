@@ -15,7 +15,7 @@ import { sendEmail } from '../../utils/sendEmail.js';
 passport.use(new GoogleStrategy({
     clientID: process.env.clientID!,
     clientSecret: process.env.clientSecret!,
-    callbackURL: "https://noor-server-ts.vercel.app/auth/google/callback",
+    callbackURL: "https://almajd-tau.vercel.app/auth/google",
   },
   async (_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
     try {
