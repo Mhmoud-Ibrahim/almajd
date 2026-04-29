@@ -21,7 +21,7 @@ app.use(cors({
   origin:[
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://noor-store-five.vercel.app", 
+    "https://almajd-front.vercel.app", 
     "https://api.cloudinary.com"
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
