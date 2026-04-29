@@ -3,9 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import connectDB from './MongoDB/Schemas/connectDB';
-import authRouter from './modules/auth/auth.routes';
 import { AppError } from './utils/appError';
 import globalErrorHandler from './middleware/globalError';
+import authRouter from './modules/auth/auth.routes';
 
 dotenv.config();
 
