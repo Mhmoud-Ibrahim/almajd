@@ -1,76 +1,35 @@
-import { Schema, model, Document } from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema, model } from "mongoose";
 
+// 1. تعريف الـ Interface
 export interface IUser extends Document {
-  fullName: string;
-  email?: string;
-  phoneNumber?: string;
-  password?: string;
-  profilePic: {
-    public_id: string; 
-    url: string;      
-  };
-   otp?: string | undefined; 
-   otpExpires?: Date | null | undefined; 
-  isVerified: boolean;
-  
-  comparePassword: (password: string) => Promise<boolean>;
+    name: string;
+    email: string;
+    password: string;
+    userImage?: string; 
+    role: string; 
+    googleId?: string;
+    passwordResetToken?: string;
+    passwordResetExpires?: Date;
 }
 
-
-const userSchema = new Schema<IUser>({
-  fullName: { 
-    type: String, 
-    required: [true, 'الاسم مطلوب'],
-    trim: true 
-  },
-  email: { 
-    type: String, 
-    unique: true, 
-    sparse: true, 
-    lowercase: true 
-  },
-  phoneNumber: { 
-    type: String, 
-    unique: true, 
-    sparse: true 
-  },
-  password: { 
-    type: String, 
-    minlength: 6,
-    select: false 
-  },
-  profilePic: {
-    public_id: { 
-      type: String, 
-      default: "" 
+// 2. تعريف الـ Schema
+const UserSchema = new Schema<IUser>({
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true }, // سيتم تخزينها مشفرة جاهزة
+    userImage: { type: String },
+    googleId: { type: String, required: false },
+    role: { 
+        type: String, 
+        enum: ['user', 'admin', 'employee'],
+        default: 'user'
     },
-    url: { 
-      type: String, 
-      default: "https://cloudinary.com" 
-    }
-  },
-  otp: String,
-  otpExpires: Date,
-  isVerified: { 
-    type: Boolean, 
-    default: false 
-  }
-}, { 
-  timestamps: true 
+    passwordResetToken: { type: String },
+    passwordResetExpires: { type: Date },
+}, {
+    timestamps: true,
+    versionKey: false
 });
 
-userSchema.pre<IUser>('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password!, salt);
-  next();
-});
-
-userSchema.methods.comparePassword = async function (enteredPassword: string): Promise<boolean> {
-  return await bcrypt.compare(enteredPassword, this.password!);
-};
-
-const User = model<IUser>('User', userSchema);
-export default User;
+// ملاحظة: تم حذف الـ pre-save لأن التشفير يتم يدوياً في الكنترولر لضمان استقرار TypeScript
+export const User = model<IUser>('User', UserSchema);

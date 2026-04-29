@@ -10,7 +10,7 @@ import { Strategy as GoogleStrategy, type Profile, type VerifyCallback } from 'p
 import dotenv from 'dotenv';
 import crypto from 'crypto'; 
 import { sendEmail } from '../../utils/sendEmail.js';
-import User from '../../MongoDB/Schemas/user.model';
+import { User } from '../../MongoDB/Schemas/user.model';
 dotenv.config();
 // --- 1. تعريف إستراتيجية جوجل (Google Strategy) ---
 passport.use(new GoogleStrategy({
