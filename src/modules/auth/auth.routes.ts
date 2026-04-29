@@ -1,17 +1,23 @@
-import express from 'express';
-import { upload } from '../../middleware/multer'; // تأكد من المسار والامتداد
-import { authenticate } from '../../middleware/authintecate';
-import { signin, signup, verifyOTP } from './auth.controler';
 
-const  authRouter= express.Router();
-authRouter.post('/signup', upload.single('profilePic'), signup);
+import { getMe, logout, signin, signup } from "./auth.controller.js";
+import { authenticate } from "../../middleware/authintecate.js";
+import { Router } from 'express';
+import passport from 'passport';
+import * as authController from './auth.controller.js';
+const authRouter = Router();
+
+authRouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+authRouter.get('/google/callback', 
+    passport.authenticate('google', { session: false, failureRedirect: 'https://vercel.app' }),
+    authController.googleAuthSuccess
+);
+authRouter.post('/signup', signup);
 authRouter.post('/signin', signin);
-authRouter.post('/verify-otp', verifyOTP);
-authRouter.get('/me', authenticate, (req: any, res) => {
-  res.status(200).json({ 
-    success: true, 
-    user: req.user 
-  });
-});
+authRouter.post('/logout', logout);
+authRouter.get('/me', authenticate, getMe);
+// --- Forgot & Reset Password Routes ---
+authRouter.post('/forgotPassword', authController.forgotPassword); // لإرسال الإيميل
+authRouter.patch('/resetPassword', authController.resetPassword); // لتغيير الباسورد الفعلي
+
 
 export default authRouter;
