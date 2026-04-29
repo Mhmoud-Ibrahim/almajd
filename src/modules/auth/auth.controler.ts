@@ -7,10 +7,10 @@ import { AppError } from '../../utils/appError.js';
 import type { NextFunction, Request, Response } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy, type Profile, type VerifyCallback } from 'passport-google-oauth20';
-
+import dotenv from 'dotenv';
 import crypto from 'crypto'; 
 import { sendEmail } from '../../utils/sendEmail.js';
-
+dotenv.config();
 // --- 1. تعريف إستراتيجية جوجل (Google Strategy) ---
 passport.use(new GoogleStrategy({
     clientID: process.env.clientID!,
